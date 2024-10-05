@@ -3,7 +3,7 @@ import getpass
 
 # Server Details
 host = "localhost"
-database = "election"
+database = "electionSystem"
 
 #Vars
 superuser = False
@@ -11,9 +11,9 @@ superuser = False
 #Functions
 def init_tables():
     try:
-        cursor.execute("create table if not exists candidates(id int,name varchar(15),class int,section varchar(1),election int)")
-        cursor.execute("create table if not exists elections(id int,name varchar(15))")
-        cursor.execute("create table if not exists votes(id int,election_id int,votes int)")
+        cursor.execute("create table if not exists elections(id int not null unique primary key,name varchar(15))")
+        cursor.execute("create table if not exists candidates(id int not null unique primary key,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id))")
+        cursor.execute("create table if not exists votes(id int not null unique primary key,election_id int not null,votes int not null,foreign key (election_id) references elections(id))")
         con.commit()
         return 0
     except mysql.connector.Error as e:
