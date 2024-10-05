@@ -11,7 +11,7 @@ superuser = False
 #Functions
 def init_tables():
     try:
-        cursor.execute("create table if not exists elections(id int not null unique primary key,name varchar(15))")
+        cursor.execute("create table if not exists elections(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null unique)")
         cursor.execute("create table if not exists candidates(id int not null unique primary key,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id))")
         cursor.execute("create table if not exists votes(id int not null unique primary key,election_id int not null,votes int not null,foreign key (election_id) references elections(id))")
         con.commit()
@@ -20,7 +20,7 @@ def init_tables():
         print("An error occurred! Error:",e)
         return -1
 username =  input("Please enter username: ")
-password =  getpass.getpass('Please enter password:') #Used to get a password from user (so that password is not shown)
+password =  getpass.getpass('Please enter password: ') #Used to get a password from user (so that password is not shown)
 
 try:
     con = mysql.connector.connect(host=host,user=username,passwd=password,database=database)
@@ -41,14 +41,16 @@ try:
         superuser = True
         cursor.fetchall()
     while True:
+        print()
         print("Menu: ")
         print("1. Start voting")
         if superuser:
-            exitval = 5
+            exitval = 6
             print("2. Add a voter")
-            print("3. Add Candidates")
-            print("4. View Results")
-            print("5. Exit")
+            print("3. Manage Elections")
+            print("4. Manage Candidates")
+            print("5. Manage Results")
+            print("6. Exit")
         else:
             exitval = 2
             print("2. Exit")
@@ -69,9 +71,47 @@ try:
             else:
                 print("Voter added successfully")
         elif op == 3 and superuser:
-            print("Add candidate")
+            print()
+            while True:
+                print("Manage elections: ")
+                print("1. Add Election")
+                print("2. View Elections")
+                print("3. Delete Election")
+                print("4. Back")
+                op = int(input("Enter option: "))
+                if op == 1:
+                    electionName = input("Enter election name: ")
+                    try:
+                        cursor.execute("insert into elections(name) values('{0}')".format(electionName))
+                        con.commit()
+                        cursor.execute("select last_insert_id()")
+                        print("Election Added successfully! Election ID is: ",cursor.fetchall()[0][0])
+                        print()
+                    except Exception as e:
+                        print("Failed to add election! Error:",e)
+                elif op == 2:
+                    print()
+                    cursor.execute("select * from elections")
+                    for i in cursor.fetchall():
+                        print("Election ID:",i[0])
+                        print("Election name:",i[1])
+                        print()
+                elif op == 3:
+                    electionId = input("Enter election id to remove:")
+                    try:
+                        cursor.execute("delete from elections where id={0}".format(electionId))
+                        con.commit()
+                        print("Election deleted successfully")
+                    except Exception as e:
+                        print("Failed to delete election! Error: ",e)
+                elif op == 4:
+                    break
+                else:
+                    print("Invalid option!")
         elif op == 4 and superuser:
-            print("Result")
+            print("add candidate")
+        elif op == 5 and superuser:
+            print("view result")
         elif op == exitval:
             print("Exiting")
             exit()
