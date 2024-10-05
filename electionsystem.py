@@ -12,8 +12,8 @@ superuser = False
 def init_tables():
     try:
         cursor.execute("create table if not exists elections(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null unique)")
-        cursor.execute("create table if not exists candidates(id int not null unique primary key,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id))")
-        cursor.execute("create table if not exists votes(id int not null unique primary key,election_id int not null,votes int not null,foreign key (election_id) references elections(id))")
+        cursor.execute("create table if not exists candidates(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id))")
+        cursor.execute("create table if not exists votes(id int not null unique primary key AUTO_INCREMENT,election_id int not null,votes int not null,foreign key (election_id) references elections(id))")
         con.commit()
         return 0
     except mysql.connector.Error as e:
@@ -109,7 +109,50 @@ try:
                 else:
                     print("Invalid option!")
         elif op == 4 and superuser:
-            print("add candidate")
+            print()
+            eid = input("Enter election id: ")
+            cursor.execute("select count(*) from elections where id={0}".format(eid))
+            if cursor.fetchall()[0][0] == 0:
+                print("Election ID Not found!")
+                continue
+            while True:
+                print("Manage Candidates: ")
+                print("1. Add Candidate")
+                print("2. View Candidates")
+                print("3. Delete Candidate")
+                print("4. Back")
+                op = int(input("Enter option: "))
+                if op == 1:
+                    name = input("Enter candidate name: ")
+                    classst = input("Enter class: ")
+                    section = input("Enter section: ")
+                    try:
+                        cursor.execute("insert into candidates(name,class,section,election) values('{0}',{1},'{2}',{3})".format(name,classst,section,eid))
+                        con.commit()
+                        print("Candidate Added successfully!")
+                        print()
+                    except Exception as e:
+                        print("Failed to add candidate! Error:",e)
+                elif op == 2:
+                    print()
+                    cursor.execute("select id,name,class,section from candidates where election={0}".format(eid))
+                    for i in cursor.fetchall():
+                        print("Candidate ID:",i[0])
+                        print("Candidate name:",i[1])
+                        print("Candidate Class and Section: ",i[2],i[3],sep="")
+                        print()
+                elif op == 3:
+                    cid = input("Enter candidate id to remove: ")
+                    try:
+                        cursor.execute("delete from candidates where id={0} and election={1}".format(cid,eid))
+                        con.commit()
+                        print("Election deleted successfully")
+                    except Exception as e:
+                        print("Failed to delete election! Error: ",e)
+                elif op == 4:
+                    break
+                else:
+                    print("Invalid option!")
         elif op == 5 and superuser:
             print("view result")
         elif op == exitval:
