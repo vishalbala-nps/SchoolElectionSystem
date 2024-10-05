@@ -12,8 +12,8 @@ superuser = False
 def init_tables():
     try:
         cursor.execute("create table if not exists elections(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null unique)")
-        cursor.execute("create table if not exists candidates(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id))")
-        cursor.execute("create table if not exists votes(id int not null unique primary key AUTO_INCREMENT,election_id int not null,votes int not null,foreign key (election_id) references elections(id))")
+        cursor.execute("create table if not exists candidates(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id) on delete cascade)")
+        cursor.execute("create table if not exists votes(candidate int not null,election int not null,votes int not null,foreign key (election) references elections(id) on delete cascade,foreign key (candidate) references candidates(id) on delete cascade)")
         con.commit()
         return 0
     except mysql.connector.Error as e:
@@ -56,7 +56,41 @@ try:
             print("2. Exit")
         op = int(input("Enter option: "))
         if op == 1:
-            pass
+            try:
+                cursor.execute("select * from elections order by id")
+            except Exception as e:
+                print("Failed to get list of elections! Error:",e)
+                continue
+            elections = cursor.fetchall()
+            print()
+            while True:
+                print("Please select election: ")
+                for i in elections:
+                    print(i[0],". ",i[1],sep="")
+                op = input("Enter election id (press enter to go back): ")
+                if op == "":
+                    break
+                else:
+                    cursor.execute("select * from candidates where election={0} order by id".format(op))
+                    cf = cursor.fetchall()
+                    if len(cf) == 0:
+                        print("No candidates added or invalid election id")
+                    else:
+                        print("Please select candidate:")
+                        for i in cf:
+                            print(i[0],". ",i[1],", ",i[2],i[3],sep="")
+                        cid = input("Please enter candidate id (enter to go back): ")
+                        if cid == "":
+                            break
+                        else:
+                            try:
+                                cursor.execute("update votes set votes = votes+1 where candidate={0} and election={1}".format(cid,op))
+                                con.commit()
+                            except Exception as e:
+                                print("Failed to cast vote! Error:",e)
+                            else:
+                                print("Vote successfully casted")
+
         elif op == 2 and superuser:
             newu = input("Please enter username: ")
             newp = getpass.getpass("Please enter password: ")
@@ -91,7 +125,7 @@ try:
                         print("Failed to add election! Error:",e)
                 elif op == 2:
                     print()
-                    cursor.execute("select * from elections")
+                    cursor.execute("select * from elections order by id")
                     for i in cursor.fetchall():
                         print("Election ID:",i[0])
                         print("Election name:",i[1])
@@ -111,11 +145,13 @@ try:
         elif op == 4 and superuser:
             print()
             eid = input("Enter election id: ")
-            cursor.execute("select count(*) from elections where id={0}".format(eid))
-            if cursor.fetchall()[0][0] == 0:
+            cursor.execute("select name from elections where id={0}".format(eid))
+            cf = cursor.fetchall()
+            if len(cf) == 0:
                 print("Election ID Not found!")
                 continue
             while True:
+                print("Election name:",cf[0][0])
                 print("Manage Candidates: ")
                 print("1. Add Candidate")
                 print("2. View Candidates")
@@ -125,9 +161,12 @@ try:
                 if op == 1:
                     name = input("Enter candidate name: ")
                     classst = input("Enter class: ")
-                    section = input("Enter section: ")
+                    section = input("Enter section: ").upper()
                     try:
                         cursor.execute("insert into candidates(name,class,section,election) values('{0}',{1},'{2}',{3})".format(name,classst,section,eid))
+                        con.commit()
+                        cursor.execute("select last_insert_id()")
+                        cursor.execute("insert into votes(candidate,election,votes) values({0},{1},0)".format(cursor.fetchall()[0][0],eid))
                         con.commit()
                         print("Candidate Added successfully!")
                         print()
@@ -135,7 +174,7 @@ try:
                         print("Failed to add candidate! Error:",e)
                 elif op == 2:
                     print()
-                    cursor.execute("select id,name,class,section from candidates where election={0}".format(eid))
+                    cursor.execute("select id,name,class,section from candidates where election={0} order by id".format(eid))
                     for i in cursor.fetchall():
                         print("Candidate ID:",i[0])
                         print("Candidate name:",i[1])
