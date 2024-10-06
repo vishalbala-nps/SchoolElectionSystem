@@ -43,14 +43,12 @@ try:
         print("Creating tables")
         if init_tables() != 0:
             exit()
-    #Check if user can access votes table, if yes, a superuser or else a voter
-    try:
-        cursor.execute("select * from votes")
-    except mysql.connector.Error as e:
+    #Check if user is a superuser
+    cursor.execute("select user from mysql.user where super_priv='Y' and user='{0}'".format(username))
+    if len(cursor.fetchall()) == 0:
         superuser = False
     else:
         superuser = True
-        cursor.fetchall()
     while True:
         print()
         print("Menu: ")
@@ -110,6 +108,8 @@ try:
                 cursor.execute("grant select on {0}.candidates to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant select on {0}.elections to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant update on {0}.votes to '{1}'@'%'".format(database,newu))
+                cursor.execute("grant select,update on {0}.votes to '{1}'@'%'".format(database,newu))
+                cursor.execute("grant select(user,super_priv) on mysql.user to '{1}'@'%'".format(database,newu))
                 con.commit()
             except Exception as e:
                 print("Failed to add user:",e)
