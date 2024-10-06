@@ -1,7 +1,7 @@
 import mysql.connector
 import getpass
 from tabulate import tabulate
-
+import csv
 # Server Details
 host = "localhost"
 database = "electionSystem"
@@ -234,6 +234,17 @@ try:
                         for i in range(len(tie)):
                             print(i+1,". ",tie[i][1],sep="")
                         print("These candidates have ",tie[0][4]," votes",sep="")
+                    ce = input("Would you like to export these results as a CSV File?(Y/N):")
+                    if ce.upper().strip() == "Y":
+                        f = open("election_results_"+str(op)+".csv","w")
+                        writer = csv.writer(f)
+                        writer.writerow(["Candidate ID","Name","Class","Section","No of votes"])
+                        writer.writerows(cf)
+                        print("Data written successfully")
+                        f.close()
+                        break
+                    else:
+                        break
         elif op == exitval:
             print("Exiting")
             cursor.close()
