@@ -3,11 +3,14 @@ import getpass
 from tabulate import tabulate
 import csv
 # Server Details
-host = "localhost"
+host = "192.168.1.130"
 database = "electionSystem"
 
 #Vars
 superuser = False
+OKGREEN = '\033[92m'
+FAIL = '\033[91m'
+ENDC = '\033[0m'
 
 #Functions
 def init_tables():
@@ -36,7 +39,7 @@ password =  getpass.getpass('Please enter password: ') #Used to get a password f
 try:
     con = mysql.connector.connect(host=host,user=username,passwd=password,database=database)
     cursor = con.cursor()
-    print("Logged in to database")
+    print(OKGREEN+"Logged in to database"+ENDC)
     #Check the tables
     cursor.execute("show tables")
     if len(cursor.fetchall()) != 3:
@@ -96,13 +99,14 @@ try:
                                 cursor.execute("update votes set votes = votes+1 where candidate={0} and election={1}".format(cid,op))
                                 con.commit()
                             except Exception as e:
-                                print("Failed to cast vote! Error:",e)
+                                print(OKGREEN+"Failed to cast vote! Error:",e,ENDC)
                             else:
-                                print("Vote successfully casted")
+                                print(OKGREEN+"Vote successfully casted",ENDC)
+                                print()
 
         elif op == 2 and superuser:
-            newu = input("Please enter username: ")
-            newp = getpass.getpass("Please enter password: ")
+            newu = input("Please enter voter name: ")
+            newp = getpass.getpass("Please enter voter password: ")
             try:
                 cursor.execute("create user '{0}'@'%' identified by '{1}'".format(newu,newp))
                 cursor.execute("grant select on {0}.candidates to '{1}'@'%'".format(database,newu))
@@ -112,9 +116,9 @@ try:
                 cursor.execute("grant select(user,super_priv) on mysql.user to '{1}'@'%'".format(database,newu))
                 con.commit()
             except Exception as e:
-                print("Failed to add user:",e)
+                print(FAIL+"Failed to add user:",e,ENDC)
             else:
-                print("Voter added successfully")
+                print(OKGREEN+"Voter added successfully",ENDC)
         elif op == 3 and superuser:
             print()
             while True:
@@ -130,84 +134,93 @@ try:
                         cursor.execute("insert into elections(name) values('{0}')".format(electionName))
                         con.commit()
                         cursor.execute("select last_insert_id()")
-                        print("Election Added successfully! Election ID is: ",cursor.fetchall()[0][0])
+                        print(OKGREEN+"Election Added successfully! Election ID is: ",cursor.fetchall()[0][0],ENDC)
                         print()
                     except Exception as e:
-                        print("Failed to add election! Error:",e)
+                        print(FAIL+"Failed to add election! Error:",e,ENDC)
                 elif op == 2:
                     print()
                     cursor.execute("select * from elections order by id")
-                    for i in cursor.fetchall():
-                        print("Election ID:",i[0])
-                        print("Election name:",i[1])
-                        print()
+                    print(tabulate(cursor.fetchall(),["Election ID","Election Name"]))
+                    print()
                 elif op == 3:
-                    electionId = input("Enter election id to remove:")
+                    electionId = input("Enter election id to remove: ")
                     try:
                         cursor.execute("delete from elections where id={0}".format(electionId))
                         con.commit()
-                        print("Election deleted successfully")
+                        print(OKGREEN+"Election deleted successfully",ENDC)
+                        print()
                     except Exception as e:
-                        print("Failed to delete election! Error: ",e)
+                        print(FAIL+"Failed to delete election! Error: ",e)
                 elif op == 4:
                     break
                 else:
-                    print("Invalid option!")
+                    print(FAIL+"Invalid option!",ENDC)
         elif op == 4 and superuser:
-            print()
-            eid = input("Enter election id: ")
-            cursor.execute("select name from elections where id={0}".format(eid))
-            cf = cursor.fetchall()
-            if len(cf) == 0:
-                print("Election ID Not found!")
-                continue
-            while True:
-                print("Election name:",cf[0][0])
-                print("Manage Candidates: ")
-                print("1. Add Candidate")
-                print("2. View Candidates")
-                print("3. Delete Candidate")
-                print("4. Back")
-                op = int(input("Enter option: "))
-                if op == 1:
-                    name = input("Enter candidate name: ")
-                    classst = input("Enter class: ")
-                    section = input("Enter section: ").upper()
-                    try:
-                        cursor.execute("insert into candidates(name,class,section,election) values('{0}',{1},'{2}',{3})".format(name,classst,section,eid))
-                        con.commit()
-                        cursor.execute("select last_insert_id()")
-                        cursor.execute("insert into votes(candidate,election,votes) values({0},{1},0)".format(cursor.fetchall()[0][0],eid))
-                        con.commit()
-                        print("Candidate Added successfully!")
-                        print()
-                    except Exception as e:
-                        print("Failed to add candidate! Error:",e)
-                elif op == 2:
-                    print()
-                    cursor.execute("select id,name,class,section from candidates where election={0} order by id".format(eid))
-                    for i in cursor.fetchall():
-                        print("Candidate ID:",i[0])
-                        print("Candidate name:",i[1])
-                        print("Candidate Class and Section: ",i[2],i[3],sep="")
-                        print()
-                elif op == 3:
-                    cid = input("Enter candidate id to remove: ")
-                    try:
-                        cursor.execute("delete from candidates where id={0} and election={1}".format(cid,eid))
-                        con.commit()
-                        print("Election deleted successfully")
-                    except Exception as e:
-                        print("Failed to delete election! Error: ",e)
-                elif op == 4:
-                    break
-                else:
-                    print("Invalid option!")
-        elif op == 5 and superuser:
             try:
                 cursor.execute("select * from elections order by id")
             except Exception as e:
                 print("Failed to get list of elections! Error:",e)
+                continue
+            elections = cursor.fetchall()
+            print()
+            while True:
+                print("Please select election: ")
+                for i in elections:
+                    print(i[0],". ",i[1],sep="")
+                eid = input("Enter election id (press enter to go back): ")
+                if eid == "":
+                    break
+                else:
+                    cursor.execute("select name from elections where id={0}".format(eid))
+                    cf = cursor.fetchall()
+                    if len(cf) == 0:
+                        print(FAIL+"Election ID Not found!",ENDC)
+                        continue
+                    else:
+                        while True:
+                            print()
+                            print("Election name:",cf[0][0])
+                            print("Manage Candidates: ")
+                            print("1. Add Candidate")
+                            print("2. View Candidates")
+                            print("3. Delete Candidate")
+                            print("4. Back")
+                            op = int(input("Enter option: "))
+                            if op == 1:
+                                name = input("Enter candidate name: ")
+                                classst = input("Enter class: ")
+                                section = input("Enter section: ").upper()
+                                try:
+                                    cursor.execute("insert into candidates(name,class,section,election) values('{0}',{1},'{2}',{3})".format(name,classst,section,eid))
+                                    con.commit()
+                                    cursor.execute("select last_insert_id()")
+                                    cursor.execute("insert into votes(candidate,election,votes) values({0},{1},0)".format(cursor.fetchall()[0][0],eid))
+                                    con.commit()
+                                    print(OKGREEN+"Candidate Added successfully!",ENDC)
+                                except Exception as e:
+                                    print(FAIL+"Failed to add candidate! Error:",e,ENDC)
+                            elif op == 2:
+                                print()
+                                cursor.execute("select id,name,class,section from candidates where election={0} order by id".format(eid))
+                                print(tabulate(cursor.fetchall(),["ID","Name","Class","Section"]))
+                            elif op == 3:
+                                cid = input("Enter candidate id to remove: ")
+                                try:
+                                    cursor.execute("delete from candidates where id={0} and election={1}".format(cid,eid))
+                                    con.commit()
+                                    print(OKGREEN+"Candidate deleted successfully",ENDC)
+                                except Exception as e:
+                                    print(FAIL+"Failed to delete election! Error: ",e,ENDC)
+                            elif op == 4:
+                                break
+                            else:
+                                print(FAIL+"Invalid option!",ENDC)
+        elif op == 5 and superuser:
+            try:
+                cursor.execute("select * from elections order by id")
+            except Exception as e:
+                print(FAIL+"Failed to get list of elections! Error:",e,ENDC)
                 continue
             elections = cursor.fetchall()
             print()
@@ -227,13 +240,13 @@ try:
                         print(tabulate(cf,["Candidate ID","Name","Class","Section","No of votes"]))
                     tie = checkTie(cf)
                     if len(tie) == 1:
-                        print("Candidate with most votes:")
-                        print(tie[0][1]+" of class ",tie[0][2],tie[0][3]," with ",tie[0][4]," votes",sep="")
+                        print(OKGREEN+"Candidate with most votes:")
+                        print(tie[0][1]+" of class ",tie[0][2],tie[0][3]," with ",tie[0][4]," votes",ENDC,sep="")
                     else:
-                        print("Results tied between:")
+                        print(OKGREEN+"Results tied between:")
                         for i in range(len(tie)):
                             print(i+1,". ",tie[i][1],sep="")
-                        print("These candidates have ",tie[0][4]," votes",sep="")
+                        print("These candidates have ",tie[0][4]," votes",ENDC,sep="")
                     ce = input("Would you like to export these results as a CSV File?(Y/N):")
                     if ce.upper().strip() == "Y":
                         f = open("election_results_"+str(op)+".csv","w")
@@ -251,11 +264,11 @@ try:
             con.close()
             exit()
         else:
-            print("Invalid option!")
+            print(FAIL+"Invalid option!",ENDC)
 except mysql.connector.Error as e:
     if e.errno == 1045: #1045 is auth error
-        print("Invalid Credentials! Please check username and password and try again")
+        print(FAIL+"Invalid Credentials! Please check username and password and try again",ENDC)
     elif e.errno == 1049: #1049 is db not found error
-        print("Database not found! Please create it")
+        print(FAIL+"Database not found! Please create it",ENDC)
     else:
-        print("Unknown error:",e)
+        print(FAIL+"Unknown error:",e),ENDC
