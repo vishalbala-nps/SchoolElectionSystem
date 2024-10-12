@@ -3,7 +3,7 @@ import getpass
 from tabulate import tabulate
 import csv
 # Server Details
-host = "192.168.1.130"
+host = "localhost"
 database = "electionSystem"
 
 #Vars
@@ -249,7 +249,7 @@ try:
                         print("These candidates have ",tie[0][4]," votes",ENDC,sep="")
                     ce = input("Would you like to export these results as a CSV File?(Y/N):")
                     if ce.upper().strip() == "Y":
-                        f = open("election_results_"+str(op)+".csv","w")
+                        f = open("election_results_"+str(op)+".csv","w",newline="")
                         writer = csv.writer(f)
                         writer.writerow(["Candidate ID","Name","Class","Section","No of votes"])
                         writer.writerows(cf)
