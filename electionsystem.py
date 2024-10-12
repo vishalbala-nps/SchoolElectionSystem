@@ -2,15 +2,18 @@ import mysql.connector
 import getpass
 from tabulate import tabulate
 import csv
+
 # Server Details
 host = "localhost"
 database = "electionSystem"
 
 #Vars
 superuser = False
-OKGREEN = '\033[92m'
-FAIL = '\033[91m'
-ENDC = '\033[0m'
+
+#These are ANSI escape sequences that allow us to put colour in text, Refer here for some examples: https://gist.github.com/rene-d/9e584a7dd2935d0f461904b9f2950007
+OKGREEN = '\033[92m' #Colour code for green
+FAIL = '\033[91m' #Colour code for red
+ENDC = '\033[0m' #This is to turn off the colour at the end of text
 
 #Functions
 def init_tables():
@@ -33,6 +36,8 @@ def checkTie(lst):
         else:
             break
     return tievals
+
+#Main Program
 username =  input("Please enter username: ")
 password =  getpass.getpass('Please enter password: ') #Used to get a password from user (so that password is not shown)
 
@@ -46,7 +51,7 @@ try:
         print("Creating tables")
         if init_tables() != 0:
             exit()
-    #Check if user is a superuser
+    #Check if user is root user. If so, then allow managing voters, elections and candidates
     cursor.execute("select user from mysql.user where super_priv='Y' and user='{0}'".format(username))
     if len(cursor.fetchall()) == 0:
         superuser = False
@@ -108,11 +113,14 @@ try:
             newu = input("Please enter voter name: ")
             newp = getpass.getpass("Please enter voter password: ")
             try:
-                cursor.execute("create user '{0}'@'%' identified by '{1}'".format(newu,newp))
+                cursor.execute("create user '{0}'@'%' identified by '{1}'".format(newu,newp)) #Creates the voter user
+                #These permissions allow the voter user to only view data on candidates and elections table
                 cursor.execute("grant select on {0}.candidates to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant select on {0}.elections to '{1}'@'%'".format(database,newu))
+                #These permissions allow voter to increment the votes table
                 cursor.execute("grant update on {0}.votes to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant select,update on {0}.votes to '{1}'@'%'".format(database,newu))
+                #This allows the voter to get access the MySQL's users table to check if the user is a root user or not
                 cursor.execute("grant select(user,super_priv) on mysql.user to '{1}'@'%'".format(database,newu))
                 con.commit()
             except Exception as e:
@@ -133,6 +141,7 @@ try:
                     try:
                         cursor.execute("insert into elections(name) values('{0}')".format(electionName))
                         con.commit()
+                        #This returns the primary key of the value inserted into the table
                         cursor.execute("select last_insert_id()")
                         print(OKGREEN+"Election Added successfully! Election ID is: ",cursor.fetchall()[0][0],ENDC)
                         print()
@@ -194,6 +203,7 @@ try:
                                 try:
                                     cursor.execute("insert into candidates(name,class,section,election) values('{0}',{1},'{2}',{3})".format(name,classst,section,eid))
                                     con.commit()
+                                    #This returns the primary key of the value inserted into the table
                                     cursor.execute("select last_insert_id()")
                                     cursor.execute("insert into votes(candidate,election,votes) values({0},{1},0)".format(cursor.fetchall()[0][0],eid))
                                     con.commit()
@@ -265,7 +275,7 @@ try:
             exit()
         else:
             print(FAIL+"Invalid option!",ENDC)
-except mysql.connector.Error as e:
+except mysql.connector.Error as e: #This is an object provided by MySQL Connector to handle errors
     if e.errno == 1045: #1045 is auth error
         print(FAIL+"Invalid Credentials! Please check username and password and try again",ENDC)
     elif e.errno == 1049: #1049 is db not found error
