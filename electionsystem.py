@@ -1,7 +1,16 @@
 import mysql.connector
 import getpass
-from tabulate import tabulate
+from tabulate import tabulate #Module used for showing data in table form
 import csv
+
+"""
+Table Structure
+
+Within the database electionSystem, we have 3 tables
+1. Elections -> The list of elections in which the voters can vote
+2. Candidates -> Contain the list of candidates who are contesting
+3. Votes -> Contain the votes for the corresponding elections
+"""
 
 # Server Details
 host = "localhost"
@@ -18,6 +27,7 @@ ENDC = '\033[0m' #This is to turn off the colour at the end of text
 #Functions
 def init_tables():
     try:
+        #The AUTO_INCREMENT constraint allows us to increment the id automatically when inserting
         cursor.execute("create table if not exists elections(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null unique)")
         cursor.execute("create table if not exists candidates(id int not null unique primary key AUTO_INCREMENT,name varchar(15) not null,class int not null,section varchar(1) not null,election int not null,foreign key (election) references elections(id) on delete cascade)")
         cursor.execute("create table if not exists votes(candidate int not null,election int not null,votes int not null,foreign key (election) references elections(id) on delete cascade,foreign key (candidate) references candidates(id) on delete cascade)")
@@ -118,7 +128,6 @@ try:
                 cursor.execute("grant select on {0}.candidates to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant select on {0}.elections to '{1}'@'%'".format(database,newu))
                 #These permissions allow voter to increment the votes table
-                cursor.execute("grant update on {0}.votes to '{1}'@'%'".format(database,newu))
                 cursor.execute("grant select,update on {0}.votes to '{1}'@'%'".format(database,newu))
                 #This allows the voter to get access the MySQL's users table to check if the user is a root user or not
                 cursor.execute("grant select(user,super_priv) on mysql.user to '{1}'@'%'".format(database,newu))
@@ -150,7 +159,7 @@ try:
                 elif op == 2:
                     print()
                     cursor.execute("select * from elections order by id")
-                    print(tabulate(cursor.fetchall(),["Election ID","Election Name"]))
+                    print(tabulate(cursor.fetchall(),["Election ID","Election Name"])) #Arguments: 1st argument -> Data, 2nd Argument -> Columns (very similar to csv file)
                     print()
                 elif op == 3:
                     electionId = input("Enter election id to remove: ")
